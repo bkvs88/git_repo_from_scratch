@@ -4,6 +4,11 @@ A tiny Python calculator project used to demonstrate the **Git basics**:
 `git init`, `git status`, `git add`, `git commit`, `git log`, `git diff`,
 and `.gitignore` — with **both Git CLI and VS Code Source Control** options.
 
+It also contains a complete, reproducible walkthrough of **`git stash`**:
+interrupting a half-finished feature, shipping an urgent fix on a separate
+branch, then safely restoring the parked work — see
+[the `git stash` exercise](#stash-exercise).
+
 ## 🛠️ Git vs. GitHub: What's the Difference?
 
 **Git and GitHub are not the same thing.** Git is the local version control software you install on your computer, while GitHub is an online hosting service that stores your Git repositories in the cloud and adds collaboration tools.
@@ -38,14 +43,29 @@ GitHub's default file browser.
 | `addition.py`     | Defines `add(a, b)` — returns the sum.              |
 | `substraction.py` | Defines `sub(a, b)` — returns `a - b`.              |
 | `multiplication.py` | Defines `multiply(a, b)` — returns `a * b`.        |
-| `division.py`     | Defines `div(a, b)` — returns `a / b`.              |
-| `calculator.py`   | Entry point — calls all four operations.            |
+| `division.py`     | Defines `div(a, b)` — returns `a / b`; guards `b == 0`. |
+| `power.py`        | Defines `power(a, b)` — returns `a ** b`.          |
+| `calculator.py`   | Entry point — calls all five operations.            |
 | `.gitignore`      | Tells Git which files to **never track**.           |
 
 Run it with:
 
 ```bash
 python calculator.py
+```
+
+It prompts for two numbers, then prints all five results:
+
+```
+Enter first number :  10
+Enter second number : 4
+Data Capture completed
+Basic Calculator
+Addition of 10 and 4 is : 14
+substraction of 10 and 4 is : 6
+Division of 10 and 4 is : 2.5
+multiplication of 10 and 4 is : 40
+Power of 10 raised to 4 is : 10000
 ```
 
 ---
@@ -152,7 +172,7 @@ git log --oneline -5    # last 5 commits
   **Timeline** → **Git History**.
 - Click any entry to open a diff of that commit.
 
-> 📌 This repo was built incrementally over **8 meaningful commits** (see below).
+> 📌 This repo was built incrementally over a series of meaningful commits (see below).
 
 ---
 
@@ -213,6 +233,597 @@ git status --ignored       # see them listed under "Ignored files"
 
 ---
 
+<a id="stash-exercise"></a>
+
+## 8️⃣ The `git stash` Exercise
+
+**The scenario:** you are halfway through building a new feature when a
+production bug demands your attention *right now*. You cannot commit
+half-finished work, and you cannot leave the working tree dirty or you will not
+be able to switch branches. `git stash` is the tool for exactly this: it parks
+your work in a temporary commit, hands you back a clean tree, and lets you
+restore that work later.
+
+Everything below is the **real transcript** of this repository, not a
+reconstruction.
+
+### The Situation
+
+| | |
+| :--- | :--- |
+| **Original branch** | `main` |
+| **Feature in progress** | add a new `power` operation (`power.py` + wire-up in `calculator.py`) |
+| **Interruption** | a division-by-zero bug that must be fixed immediately |
+| **Hotfix branch** | `hotfix/division-by-zero` |
+
+---
+
+### Step 1 — Start the feature, but do NOT commit it
+
+Create the new operation module:
+
+```python
+# power.py
+from readdata import a, b
+
+
+def power(a, b):
+    c = a ** b
+    print(f"Power of {a} raised to {b} is : {c}")
+    return c
+```
+
+Wire it into the entry point:
+
+```python
+# calculator.py
+from power import power
+
+def main():
+    print("Basic Calculator")
+    add(a, b)
+    sub(a, b)
+    div(a, b)
+    multiply(a, b)
+    power(a, b)   # <-- new
+```
+
+Confirm it works, then **stop before committing**:
+
+```bash
+printf '2\n10\n' | python calculator.py
+```
+
+```
+multiplication of 2 and 10 is : 20
+Power of 2 raised to 10 is : 1024
+```
+
+```bash
+git status --short
+```
+
+```
+ M calculator.py
+?? power.py
+```
+
+`M` = modified but unstaged, `??` = untracked (brand-new file).
+**Neither change is committed.** This is the state we need to park.
+
+---
+
+### Step 2 — `git stash` the work
+
+```bash
+git stash push -u -m "WIP: add power operation (exponent) to calculator"
+```
+
+```
+Saved working directory and index state On main: WIP: add power operation (exponent) to calculator
+```
+
+```bash
+git status --short
+```
+
+```
+```
+
+The working tree is **clean**. The feature is safe, invisible to
+`git status`, and recoverable. You are free to switch branches.
+
+> ⚠️ **Why `-u`? This matters.**
+>
+> A plain `git stash` only stashes **tracked** files. A *new* file like
+> `power.py` is untracked, so a plain stash **silently leaves it behind** —
+> no error, no warning. This was actually observed in this repository:
+>
+> ```bash
+> git stash push -m "WIP: plain stash"
+> git status --short
+> ```
+>
+> ```
+> ?? power.py        <-- still here! the stash missed it
+> ```
+>
+> Always use `git stash push -u` (or `-a` to also include ignored files) when
+> your work contains new files. Verify with `git status` afterwards.
+
+---
+
+### Step 3 — Switch branches and ship the urgent fix
+
+```bash
+git checkout -b hotfix/division-by-zero
+```
+
+Reproduce the bug — note the operands the user actually typed (`10` and `0`)
+vanished from the output:
+
+```bash
+printf '10\n0\n' | python calculator.py
+```
+
+```
+cannot division by zero hence change value of b to 1
+Division of 0 and 1 is : 0.0          <-- a fabricated, misleading result
+```
+
+The old code did this:
+
+```python
+if b == 0:
+    print("cannot division by zero hence change value of b to 1")
+    a = 0      # overwrites the user's numbers
+    b = 1
+c = a / b
+```
+
+It silently **overwrote both operands** and printed a confident-looking
+`Division of 0 and 1 is : 0.0` for numbers the user never entered. The urgent
+fix reports the error honestly and leaves the real operands intact:
+
+```python
+# division.py
+from readdata import a, b
+
+
+def div(a, b):
+    if b == 0:
+        print(f"Error: cannot divide {a} by zero. Division skipped.")
+        return None
+    c = a / b
+    print(f"Division of {a} and {b} is : {c}")
+    return c
+```
+
+Verify both the bug case and the normal case:
+
+```bash
+printf '10\n0\n' | python calculator.py   # the bug case
+```
+
+```
+Error: cannot divide 10 by zero. Division skipped.
+```
+
+```bash
+printf '10\n4\n' | python calculator.py   # normal division still fine
+```
+
+```
+Division of 10 and 4 is : 2.5
+```
+
+Commit and push the hotfix:
+
+```bash
+git add division.py
+git commit -m "Fix division by zero to report error instead of returning false result"
+git push -u origin hotfix/division-by-zero
+```
+
+The urgent fix is shipped **without the half-finished feature** ever touching
+`main`. That is the entire point of stashing.
+
+---
+
+### Step 4 — Return to the original branch
+
+```bash
+git checkout main
+git stash list
+```
+
+```
+stash@{0}: On main: WIP: add power operation (exponent) to calculator
+```
+
+The parked work survived the branch switch and is waiting for us.
+
+---
+
+### Step 5 — `git stash list` — what is parked?
+
+```bash
+git stash list
+```
+
+```
+stash@{0}: On main: WIP: add power operation (exponent) to calculator
+```
+
+Each line is one stash entry, **newest first**. The `stash@{N}` part is the
+reference you pass to the other commands.
+
+| Command | What it does |
+| :--- | :--- |
+| `git stash list` | List all parked stashes, newest first |
+| `git stash show` | Show **what changes** a stash contains |
+| `git stash apply` | Restore the work, **keep** the stash entry |
+| `git stash pop` | Restore the work **and delete** the entry |
+| `git stash drop` | **Delete** the entry without restoring anything |
+
+> 🔎 `stash@{0}` is the **most recent** stash. After you `pop` or `drop` one,
+> every older stash **renumbers** — what was `stash@{1}` becomes `stash@{0}`.
+> Re-run `git stash list` instead of trusting a remembered index.
+
+---
+
+### Step 6 — `git stash show` — what is inside it?
+
+Default view — a summary of **tracked** file changes:
+
+```bash
+git stash show stash@{0}
+```
+
+```
+ calculator.py | 2 ++
+ 1 file changed, 2 insertions(+)
+```
+
+Full patch:
+
+```bash
+git stash show -p stash@{0}
+```
+
+```diff
+diff --git a/calculator.py b/calculator.py
+index 730be14..6c31f73 100644
+--- a/calculator.py
++++ b/calculator.py
+@@ -3,12 +3,14 @@ from readdata import a , b
+ from addition import add
+ from substraction import sub
+ from division import div
+ from multiplication import multiply
++from power import power
+ def main():
+     print("Basic Calculator")
+     add(a,b)
+     sub(a,b)
+     div(a,b)
+     multiply(a,b)
++    power(a,b)
+```
+
+> ⚠️ **The new file is missing from that output.** `git stash show` only
+> reports *tracked* files by default, so the brand-new `power.py` is invisible.
+> This mistake is easy to make, because the summary looks plausible while
+> quietly omitting a whole file.
+>
+> Always add `--include-untracked` when the stash was created with `-u`:
+>
+> ```bash
+> git stash show --include-untracked stash@{0}
+> ```
+>
+> ```
+>  calculator.py | 2 ++
+>  power.py      | 7 +++++++
+>  2 files changed, 9 insertions(+)
+> ```
+
+Useful variations:
+
+```bash
+git stash show --stat stash@{0}              # summary (same as default)
+git stash show -p stash@{0}                  # full patch, tracked files only
+git stash show -p --include-untracked        # full patch, including new files
+git stash show -p stash@{1}                  # inspect an older stash
+```
+
+---
+
+### Step 7 — `git stash apply` — restore the work, keep the stash
+
+```bash
+git stash apply stash@{0}
+```
+
+```
+On branch main
+Changes not staged for commit:
+	modified:   calculator.py
+
+Untracked files:
+	power.py
+```
+
+The feature is back and the calculator runs again:
+
+```bash
+printf '2\n10\n' | python calculator.py
+```
+
+```
+Power of 2 raised to 10 is : 1024
+```
+
+Now the important part — **check whether the stash is still there**:
+
+```bash
+git stash list
+```
+
+```
+stash@{0}: On main: WIP: add power operation (exponent) to calculator
+```
+
+**`apply` left the entry in place.** Nothing was consumed.
+
+---
+
+### Step 8 — `git stash drop` — delete an entry without restoring it
+
+`drop` removes a stash entry. It touches **only the stash list** — it does not
+change your working tree at all:
+
+```bash
+git stash drop stash@{0}
+```
+
+```
+Dropped refs/stash@{0} (2bf77d883dddfbff500e632c94f9ad6fab95473b)
+```
+
+```bash
+git stash list
+```
+
+```
+```
+
+Empty — no stashes remain. And the working tree is untouched:
+
+```bash
+git status --short
+```
+
+```
+ M calculator.py
+?? power.py
+```
+
+`drop` is the **only destructive command** in this set. Use it to throw away a
+stash you no longer want.
+
+> 🚨 **A mistake that actually happened here — and how it was undone.**
+>
+> Early in this exercise a stash was created with a plain `git stash` (no `-u`)
+> and therefore held **only** the `calculator.py` change, while `power.py` sat
+> untracked in the working tree. That stash was then `drop`ped to start over —
+> which **permanently destroyed the only copy of the `calculator.py` change**:
+>
+> ```bash
+> git stash drop
+> ```
+>
+> ```
+> Dropped refs/stash@{0} (d6b6defcd0c763262ebc7d4f094979fced28b212)
+> ```
+>
+> The tell-tale symptom appeared on the next stash: `git stash show` printed an
+> **empty diff**, because the new stash had captured nothing but a file.
+>
+> **Recovery.** `drop` only deletes a *reference*; the commits themselves linger
+> as unreachable objects for a while. The hash Git printed
+> (`d6b6def...`) can be used directly:
+>
+> ```bash
+> git checkout d6b6def -- calculator.py   # restore the file from the lost stash
+> ```
+>
+> If you never recorded the hash, hunt for it:
+>
+> ```bash
+> git fsck --unreachable --no-reflogs    # find dangling stash commits
+> git reflog stash                       # stash-specific reflog, if still present
+> ```
+>
+> **Lesson:** before `drop`ping a stash, make sure its contents are already
+> committed, applied, or safely backed up. `drop` is not undoable by `git`.
+
+---
+
+### Step 9 — `git stash pop` — restore the work and delete the entry
+
+Stash the feature once more, then pop it:
+
+```bash
+git stash push -u -m "WIP: add power operation (exponent) to calculator"
+git stash list
+```
+
+```
+stash@{0}: On main: WIP: add power operation (exponent) to calculator
+```
+
+```bash
+git stash pop
+```
+
+```
+On branch main
+Changes not staged for commit:
+	modified:   calculator.py
+
+Untracked files:
+	power.py
+
+Dropped refs/stash@{0} (2438fdaaf76dd52ec071bbf9f31c39bc048f14c8)
+```
+
+Note the final line: **`Dropped refs/stash@{0}`**. `pop` removed the entry.
+
+```bash
+git stash list
+```
+
+```
+```
+
+Empty — the stash was applied *and* consumed. Your work is in the working tree
+and the stash list is clean.
+
+---
+
+## 🔑 `apply` vs `pop` — the difference
+
+They do the **same restoration**. The *only* difference is what happens to the
+stash entry afterwards.
+
+| | `git stash apply` | `git stash pop` |
+| :--- | :--- | :--- |
+| Restores the work to the working tree | ✅ Yes | ✅ Yes |
+| Removes the entry from `git stash list` | ❌ **No — it stays** | ✅ **Yes — it is dropped** |
+| Stash can be applied a second time | ✅ Yes, as many times as you like | ❌ No — one shot only |
+| Typo in `stash@{N}` recoverable later | ✅ Still there | ❌ **Gone** |
+| Equivalent manual command | `apply` + `git stash drop` | `apply` + `git stash drop` |
+| Best used when | you want to **inspect/compare** before committing | you are **sure** and want a clean list |
+
+In one line: **`pop` = `apply` + `drop`.**
+
+### Which should you use?
+
+**Use `pop` when you are certain** the restored work is what you want. It is the
+common default because a clean `git stash list` is nice, and in the common
+case you stashed something, switched away, and are now unconditionally putting
+it back.
+
+**Use `apply` when there is any doubt** — particularly:
+
+- You stashed several times and want to work through them one at a time,
+  comparing each against the current state.
+- You want to restore the work, run the tests, and *then* decide whether to
+  keep it or throw it away.
+- You suspect you may need to re-apply the same work twice (e.g. restoring it
+  onto two different branches).
+
+```bash
+# cautious path — nothing is lost, you decide afterwards
+git stash apply stash@{0}
+# ... run tests, inspect the diff ...
+git stash drop stash@{0}    # only now, once you are satisfied
+```
+
+### The safest habit
+
+Default to **`apply`**, verify the result, and finish with a deliberate `drop`.
+The cost is one extra command. The alternative — a mistyped `pop` — costs you
+the work, as the [Step 8 recovery](#step-8--git-stash-drop--delete-an-entry-without-restoring-it)
+above demonstrates.
+
+---
+
+## 🧩 Other Useful Stash Commands
+
+```bash
+git stash push -u -m "msg"     # save, including untracked files, with a label
+git stash push --keep-index    # stash only the UNstaged changes, keep staged
+git stash push --patch         # interactively pick which hunks to stash
+git stash branch fix-div-zero  # pop the stash onto a NEW branch in one step
+git stash save "msg"           # legacy alias of `git stash push`
+git stash clear                # delete ALL stash entries at once
+```
+
+### Recovering a lost stash
+
+```bash
+git fsck --unreachable --no-reflogs   # find dangling stash commits
+git reflog                            # HEAD reflog, may mention the stash
+git show <hash>                       # inspect a recovered stash commit
+git stash apply <hash>                # restore from it directly
+```
+
+> 💡 **Anatomy of a stash.** A stash is not one object but a small set of
+> commits:
+>
+> - `stash@{0}` — the **stash commit** itself (your working-tree changes).
+> - `stash@{0}^2` — an **index snapshot**, so `--index` / `--keep-index` can be
+>   reproduced.
+> - `stash@{0}^3` — present **only for `-u` stashes**: the **untracked files**.
+>
+> That third parent is exactly why a default `git stash show` hides your new
+> files, and it is where to look when recovering a dropped stash:
+>
+> ```bash
+> git ls-tree -r --name-only stash@{0}^3   # untracked files inside the stash
+> git log -1 --format='%p' stash@{0}       # list a stash's parent commits
+> ```
+>
+> Because `drop` only removes the *reference*, that object graph survives as
+> unreachable data for a while — which is what makes recovery possible.
+
+---
+
+## 9️⃣ Bringing It Together — Merge the Hotfix
+
+Back on `main` with the feature committed and the urgent fix sitting on
+`hotfix/division-by-zero`:
+
+```bash
+git merge --no-ff hotfix/division-by-zero -m "Merge hotfix/division-by-zero: correct division by zero handling"
+```
+
+`--no-ff` keeps the hotfix as a visible merge commit, preserving the fact that
+the fix was developed separately:
+
+```bash
+git log --oneline --graph
+```
+
+```
+*   Merge hotfix/division-by-zero: correct division by zero handling
+|\
+| * Fix division by zero to report error instead of returning false result
+* | Add power operation and wire it into the calculator
+* | Sync README commit log with actual git history
+* | Update commit messages and README content
+|/
+* Wrap calculator execution in a main function guard
+* Add .gitignore to exclude bytecode, caches, and local files
+* Add README documenting the calculator project
+* Add calculator main entry point that runs all operations
+* Add multiplication and division operations
+* Add addition and substraction operations
+* Add readdata module to capture user input
+```
+
+Final verification — the feature **and** the fix are both live on `main`:
+
+```bash
+printf '10\n4\n' | python calculator.py   # all five operations
+printf '10\n0\n' | python calculator.py   # urgent fix: honest error
+printf '2\n10\n' | python calculator.py   # new feature: power
+```
+
+---
+
 ## 🚀 Publish to GitHub
 
 ### Option A — Git commands (HTTPS remote)
@@ -250,48 +861,63 @@ the bottom-left of the Source Control panel.
 
 ---
 
-## 📝 The 8 Commits
+## 📝 The Commits
 
 Every commit below is a real commit on this repository's `main` branch, listed
 newest first exactly as `git log --oneline` reports it. The short SHA is shown
 so each one can be verified individually.
 
-| #   | SHA     | Commit message                                                     | Files changed                          |
-| --- | ------- | ------------------------------------------------------------------ | -------------------------------------- |
-| 1   | `a1cc5d9` | `Update commit messages and README content`                       | `README.md`                            |
-| 2   | `8dc6f4f` | `Wrap calculator execution in a main function guard`               | `calculator.py`                        |
-| 3   | `dc6882c` | `Add .gitignore to exclude bytecode, caches, and local files`      | `.gitignore`                           |
-| 4   | `50ed391` | `Add README documenting the calculator project`                     | `README.md`                            |
-| 5   | `43c059f` | `Add calculator main entry point that runs all operations`         | `calculator.py`                        |
-| 6   | `4ef7426` | `Add multiplication and division operations`                        | `multiplication.py`, `division.py`     |
-| 7   | `b705def` | `Add addition and substraction operations`                         | `addition.py`, `substraction.py`       |
-| 8   | `39e87a3` | `Add readdata module to capture user input`                        | `readdata.py`                          |
+| #   | SHA     | Commit message                                                                | Files changed                          |
+| --- | ------- | ----------------------------------------------------------------------------- | -------------------------------------- |
+| 1   | `41bc074` | `Merge hotfix/division-by-zero: correct division by zero handling` (merge)    | `division.py`                          |
+| 2   | `621ac5b` | `Fix division by zero to report error instead of returning false result`      | `division.py`                          |
+| 3   | `3aaf5ac` | `Add power operation and wire it into the calculator`                         | `power.py`, `calculator.py`            |
+| 4   | `1e9337e` | `Sync README commit log with actual git history`                              | `README.md`                            |
+| 5   | `a1cc5d9` | `Update commit messages and README content`                                    | `README.md`                            |
+| 6   | `8dc6f4f` | `Wrap calculator execution in a main function guard`                           | `calculator.py`                        |
+| 7   | `dc6882c` | `Add .gitignore to exclude bytecode, caches, and local files`                  | `.gitignore`                           |
+| 8   | `50ed391` | `Add README documenting the calculator project`                                 | `README.md`                            |
+| 9   | `43c059f` | `Add calculator main entry point that runs all operations`                     | `calculator.py`                        |
+| 10  | `4ef7426` | `Add multiplication and division operations`                                    | `multiplication.py`, `division.py`     |
+| 11  | `b705def` | `Add addition and substraction operations`                                     | `addition.py`, `substraction.py`       |
+| 12  | `39e87a3` | `Add readdata module to capture user input`                                    | `readdata.py`                          |
 
-Commits 1–5 are the build-up of the calculator itself; 6–7 add the two remaining
-operation pairs; 8–6 are hygiene and documentation. No commit is empty — each one
-changes at least one tracked file, so all eight are meaningful.
+Commits 12–6 build up the calculator itself; 5–3 are documentation updates;
+**3** is the stashed feature (see [Step 1](#step-1--start-the-feature-but-do-not-commit-it)),
+**2** is the urgent hotfix (see [Step 3](#step-3--switch-branches-and-ship-the-urgent-fix)),
+and **1** merges the hotfix back into `main`.
 
 Verify them yourself:
 
 ```bash
-git log --oneline
+git log --oneline --graph
 ```
 
 ```
-a1cc5d9 Update commit messages and README content
-8dc6f4f Wrap calculator execution in a main function guard
-dc6882c Add .gitignore to exclude bytecode, caches, and local files
-50ed391 Add README documenting the calculator project
-43c059f Add calculator main entry point that runs all operations
-4ef7426 Add multiplication and division operations
-b705def Add addition and substraction operations
-39e87a3 Add readdata module to capture user input
+*   41bc074 Merge hotfix/division-by-zero: correct division by zero handling
+|\
+| * 621ac5b Fix division by zero to report error instead of returning false result
+* | 3aaf5ac Add power operation and wire it into the calculator
+* | 1e9337e Sync README commit log with actual git history
+* | a1cc5d9 Update commit messages and README content
+|/
+* 8dc6f4f Wrap calculator execution in a main function guard
+* dc6882c Add .gitignore to exclude bytecode, caches, and local files
+* 50ed391 Add README documenting the calculator project
+* 43c059f Add calculator main entry point that runs all operations
+* 4ef7426 Add multiplication and division operations
+* b705def Add addition and substraction operations
+* 39e87a3 Add readdata module to capture user input
 ```
 
-> 🔎 The block above is this repository's **actual** `git log --oneline` output.
-> GitHub's **Commits** tab shows these same eight commits — click any SHA in the
+> 🔎 The block above is this repository's **actual** `git log --oneline --graph`
+> output. GitHub's **Commits** tab shows the same history — click any SHA in the
 > table to open its diff, or run `git log --stat` locally to see the per-file
 > change counts.
+>
+> This README's own documentation commit sits on top of `41bc074` and therefore
+> cannot list its own SHA (amending to add it would change it again). Run
+> `git log --oneline -1` to see the current tip.
 
 ---
 
@@ -308,6 +934,23 @@ b705def Add addition and substraction operations
 | Compare changes     | `git diff`                       | Click a file under "Changes"             |
 | Push                | `git push`                       | Sync / Publish Branch button             |
 | Ignore a file       | add name to `.gitignore`         | Right-click file → Add to .gitignore     |
+| Park work           | `git stash push -u -m "msg"`     | Source Control → ⋯ → Stash All Changes  |
+| List stashes        | `git stash list`                 | Source Control → ⋯ → Stash List         |
+| Inspect a stash     | `git stash show -p --include-untracked` | —                                  |
+| Restore, keep stash | `git stash apply`                | Source Control → ⋯ → Pop / Apply         |
+| Restore, drop stash | `git stash pop`                  | Source Control → ⋯ → Pop Stash           |
+| Delete a stash      | `git stash drop`                 | —                                        |
+
+### Stash decision in one glance
+
+```
+Need to park work and switch branches?  →  git stash push -u -m "why"
+What have I parked?                     →  git stash list
+What is inside it?                      →  git stash show -p --include-untracked
+Want it back but want a safety net?    →  git stash apply      (keeps the entry)
+Want it back and committed to?         →  git stash pop        (consumes the entry)
+Never want it?                         →  git stash drop       (destroys the entry)
+```
 
 ---
 
