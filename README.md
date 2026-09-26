@@ -848,6 +848,58 @@ printf '10\n0\n' | python calculator.py   # urgent fix: honest error
 printf '2\n10\n' | python calculator.py   # new feature: power
 ```
 
+### Where the hotfix branch went
+
+The `hotfix/division-by-zero` branch described in this section is **still
+published**, so the workflow can be verified directly from GitHub rather than
+inferred from the commit log:
+
+```bash
+git log --oneline -1 origin/hotfix/division-by-zero
+```
+
+```
+671ddc6 Fix division by zero to report error instead of returning false result
+```
+
+> ⚠️ **The branch points at `671ddc6`, not at the original `621ac5b`.**
+>
+> A later `git pull --rebase` rewrote the hotfix commit, so the fix reached
+> `main` as `671ddc6`. The branch was moved to that commit deliberately,
+> because `671ddc6` is an **ancestor of `main`**:
+>
+> ```bash
+> git diff main...hotfix/division-by-zero     # no output
+> ```
+>
+> That makes the branch safe to keep around — a pull request from it to `main`
+> is empty and cannot reintroduce anything.
+
+Four annotated tags pin the commits involved, so the incident stays auditable
+even though branches come and go:
+
+| Tag | Commit | What it marks |
+| :--- | :--- | :--- |
+| `division-by-zero-fix` | `671ddc6` | The fix as it lives in `main`. **Safe.** |
+| `hotfix-original` | `621ac5b` | The original hotfix tip, before the rebase. **Do not merge.** |
+| `main-outage` | `9b233f1` | The commit that shipped the broken `main`. |
+| `outage-fix` | `3168b93` | The commit that repaired it. |
+
+Inspect them with:
+
+```bash
+git show division-by-zero-fix     # the fix
+git show main-outage              # what broke
+git show outage-fix               # what repaired it
+```
+
+> 🚨 **`hotfix-original` (`621ac5b`) is a historical artefact, not usable code.**
+> Its `division.py` still contains `from readdata import a, b`, which the
+> import-time refactor deleted. Merging or checking it out reproduces the
+> `ImportError` outage on purpose — that is exactly what happened when PR #2
+> merged the stale branch. It is tagged only so the original commit stays
+> reachable; before it was tagged, a fresh clone could not see it at all.
+
 ---
 
 ## 🔟 Verifying Changes Manually
@@ -981,25 +1033,35 @@ Every commit below is a real commit on this repository's `main` branch, listed
 newest first exactly as `git log --oneline` reports it. The short SHA is shown
 so each one can be verified individually.
 
-| #   | SHA     | Commit message                                                                | Files changed                          |
-| --- | ------- | ----------------------------------------------------------------------------- | -------------------------------------- |
-| 1   | `b857640` | `Document the git stash exercise: list, show, apply, pop, drop`               | `README.md`                            |
-| 2   | `671ddc6` | `Fix division by zero to report error instead of returning false result`      | `division.py`                          |
-| 3   | `3aaf5ac` | `Add power operation and wire it into the calculator`                         | `power.py`, `calculator.py`            |
-| 4   | `1e9337e` | `Sync README commit log with actual git history`                              | `README.md`                            |
-| 5   | `a1cc5d9` | `Update commit messages and README content`                                    | `README.md`                            |
-| 6   | `8dc6f4f` | `Wrap calculator execution in a main function guard`                           | `calculator.py`                        |
-| 7   | `dc6882c` | `Add .gitignore to exclude bytecode, caches, and local files`                  | `.gitignore`                           |
-| 8   | `50ed391` | `Add README documenting the calculator project`                                 | `README.md`                            |
-| 9   | `43c059f` | `Add calculator main entry point that runs all operations`                     | `calculator.py`                        |
-| 10  | `4ef7426` | `Add multiplication and division operations`                                    | `multiplication.py`, `division.py`     |
-| 11  | `b705def` | `Add addition and substraction operations`                                     | `addition.py`, `substraction.py`       |
-| 12  | `39e87a3` | `Add readdata module to capture user input`                                    | `readdata.py`                          |
+| #   | SHA     | Commit message                                                                | Files |
+| --- | ------- | ----------------------------------------------------------------------------- | ----- |
+| 1   | `b909a58` | `Remove test suite and CI workflow (#6)`                                    | 6 |
+| 2   | `d8c99b0` | `Remove test suite and CI workflow (#5)`                                    | 1 |
+| 3   | `c6c860e` | `Add pytest suite and CI workflow to catch import-time regressions (#4)`     | 8 |
+| 4   | `4d69cea` | `Note that Step 3's bug is already fixed on main, with repro steps`          | 1 |
+| 5   | `3168b93` | `Fix ImportError: remove stale 'from readdata import a, b' from division.py (#3)` — 🏷️ `outage-fix` | 1 |
+| 6   | `9b233f1` | `Fix division by zero to report error instead of returning false result (#2)` — 🏷️ `main-outage` | 1 |
+| 7   | `aa2bdde` | `Remove import-time input() side effects from operation modules (#1)`         | 7 |
+| 8   | `2c28a16` | `Note that the commit table cannot list its own SHA`                          | 1 |
+| 9   | `240a561` | `Correct commit table to match rebased history and document SHA rewrite`      | 1 |
+| 10  | `b857640` | `Document the git stash exercise: list, show, apply, pop, drop`               | 1 |
+| 11  | `671ddc6` | `Fix division by zero to report error instead of returning false result` — 🏷️ `division-by-zero-fix` | 1 |
+| 12  | `3aaf5ac` | `Add power operation and wire it into the calculator`                         | 2 |
+| 13  | `1e9337e` | `Sync README commit log with actual git history`                              | 1 |
+| 14  | `a1cc5d9` | `Update commit messages and README content`                                    | 1 |
+| 15  | `8dc6f4f` | `Wrap calculator execution in a main function guard`                           | 1 |
+| 16  | `dc6882c` | `Add .gitignore to exclude bytecode, caches, and local files`                  | 1 |
+| 17  | `50ed391` | `Add README documenting the calculator project`                                 | 1 |
+| 18  | `43c059f` | `Add calculator main entry point that runs all operations`                     | 1 |
+| 19  | `4ef7426` | `Add multiplication and division operations`                                    | 2 |
+| 20  | `b705def` | `Add addition and substraction operations`                                     | 2 |
+| 21  | `39e87a3` | `Add readdata module to capture user input`                                    | 1 |
 
-Commits 12–6 build up the calculator itself; 5–3 are documentation updates;
-**3** is the stashed feature (see [Step 1](#step-1--start-the-feature-but-do-not-commit-it)),
-**2** is the urgent hotfix (see [Step 3](#step-3--switch-branches-and-ship-the-urgent-fix)),
-and **1** documents the whole stash exercise.
+Commits 21–12 build up the calculator itself; 11 is the stashed feature (see
+[Step 1](#step-1--start-the-feature-but-do-not-commit-it)) and 10 documents the
+whole stash exercise. Commits 9–8 are README corrections. Commits 7–5 are the
+pull requests: **6** merged the stale hotfix branch and broke `main`, and **5**
+repaired it. Commits 3–1 added CI and then removed it again.
 
 Verify them yourself:
 
@@ -1008,21 +1070,31 @@ git log --oneline --graph
 ```
 
 ```
-* b857640 Document the git stash exercise: list, show, apply, pop, drop
-* 671ddc6 Fix division by zero to report error instead of returning false result
-* 3aaf5ac Add power operation and wire it into the calculator
-* 1e9337e Sync README commit log with actual git history
-* a1cc5d9 Update commit messages and README content
-* 8dc6f4f Wrap calculator execution in a main function guard
-* dc6882c Add .gitignore to exclude bytecode, caches, and local files
-* 50ed391 Add README documenting the calculator project
-* 43c059f Add calculator main entry point that runs all operations
-* 4ef7426 Add multiplication and division operations
-* b705def Add addition and substraction operations
-* 39e87a3 Add readdata module to capture user input
+b909a58 Remove test suite and CI workflow (#6)
+d8c99b0 Remove test suite and CI workflow (#5)
+c6c860e Add pytest suite and CI workflow to catch import-time regressions (#4)
+4d69cea Note that Step 3's bug is already fixed on main, with repro steps
+3168b93 Fix ImportError: remove stale 'from readdata import a, b' from division.py (#3)
+9b233f1 Fix division by zero to report error instead of returning false result (#2)
+aa2bdde Remove import-time input() side effects from operation modules (#1)
+2c28a16 Note that the commit table cannot list its own SHA
+240a561 Correct commit table to match rebased history and document SHA rewrite
+b857640 Document the git stash exercise: list, show, apply, pop, drop
+671ddc6 Fix division by zero to report error instead of returning false result
+3aaf5ac Add power operation and wire it into the calculator
+1e9337e Sync README commit log with actual git history
+a1cc5d9 Update commit messages and README content
+8dc6f4f Wrap calculator execution in a main function guard
+dc6882c Add .gitignore to exclude bytecode, caches, and local files
+50ed391 Add README documenting the calculator project
+43c059f Add calculator main entry point that runs all operations
+4ef7426 Add multiplication and division operations
+b705def Add addition and substraction operations
+39e87a3 Add readdata module to capture user input
 ```
 
-> 🔎 Commits 1–12 above are this repository's **actual** `git log --oneline`
+
+> 🔎 Commits 1–21 above are this repository's **actual** `git log --oneline`
 > history. GitHub's **Commits** tab shows the same log — click any SHA in the
 > table to open its diff, or run `git log --stat` locally to see the per-file
 > change counts.
@@ -1032,14 +1104,24 @@ git log --oneline --graph
 > newest commit — the one that maintains this table — is therefore always
 > missing from it. Run `git log --oneline -1` for the current tip.
 >
-> Note that commits **2** and **3** are the ends of the two branches built in
-> this exercise. The hotfix was originally merged into `main` with
-> `git merge --no-ff` to produce a visible merge commit, but a later
+> The hotfix commit is **11** (`671ddc6`). It was originally `621ac5b`; a later
 > `git pull --rebase` (see [Step 9](#9️⃣-bringing-it-together--merge-the-hotfix))
-> replayed the local commits and flattened that merge, which is why the history
-> is linear and why the hotfix SHA is `671ddc6` rather than the original
-> `621ac5b`. This is normal and harmless — but it is exactly why you should
-> read SHAs from `git log` rather than transcribing them from an old document.
+> replayed the local commits and rewrote the SHA, which is why the history is
+> linear. A rebase rewrites SHAs — read them from `git log`, never transcribe
+> them from an old document.
+>
+> Three commits carry 🏷️ tags so they stay easy to find and cannot be lost when
+> branches are deleted:
+
+```bash
+git show division-by-zero-fix   # 11 — the hotfix fix, safe
+git show main-outage            #  6 — the commit that broke main
+git show outage-fix             #  5 — the commit that repaired it
+git show hotfix-original        # the pre-rebase original; DO NOT MERGE
+```
+
+> See [Where the hotfix branch went](#where-the-hotfix-branch-went) for why the
+> `hotfix/division-by-zero` branch points at commit 11 rather than the original.
 
 ---
 
