@@ -371,6 +371,21 @@ cannot division by zero hence change value of b to 1
 Division of 0 and 1 is : 0.0          <-- a fabricated, misleading result
 ```
 
+> ⚠️ **Note for readers picking this up on the current `main`:** the bug above
+> is **already fixed**, so you will *not* see that output any more. Dividing by
+> zero now correctly reports
+> `Error: cannot divide 10 by zero. Division skipped.` The transcript below is
+> the **historical record** of the exercise as it was performed, kept for
+> teaching purposes.
+>
+> If you want to reproduce the bug yourself, check out the commit just before
+> the fix and run it there:
+>
+> ```bash
+> git show 8dc6f4f:division.py     # the original buggy version
+> printf '10\n0\n' | python calculator.py   # on that older checkout
+> ```
+
 The old code did this:
 
 ```python
