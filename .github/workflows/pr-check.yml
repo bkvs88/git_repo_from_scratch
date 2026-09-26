@@ -25,6 +25,10 @@ jobs:
         with:
           python-version: "3.13"
           cache: pip
+          # The dependency file is requirements-dev.txt, not requirements.txt.
+          # Without this, setup-python looks for the default filenames, finds
+          # neither, and fails the whole job before a single test runs.
+          cache-dependency-path: requirements-dev.txt
 
       - name: Install dependencies
         run: |
