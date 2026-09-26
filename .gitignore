@@ -9,6 +9,12 @@ __pycache__/
 .venv/
 venv/
 
+# Test artifacts
+.pytest_cache/
+junit-report.xml
+.coverage
+htmlcov/
+
 # IDE / editor files
 .vscode/
 .idea/

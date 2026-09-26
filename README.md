@@ -46,6 +46,9 @@ GitHub's default file browser.
 | `division.py`     | Defines `div(a, b)` — returns `a / b`; guards `b == 0`. |
 | `power.py`        | Defines `power(a, b)` — returns `a ** b`.          |
 | `calculator.py`   | Entry point — calls all five operations.            |
+| `tests/`          | pytest suite — see [Automated Tests & CI](#-automated-tests--ci). |
+| `requirements-dev.txt` | Test-only dependencies (the app itself has none). |
+| `.github/workflows/pr-check.yml` | CI: runs the checks on every PR and push to `main`. |
 | `.gitignore`      | Tells Git which files to **never track**.           |
 
 Run it with:
@@ -847,6 +850,98 @@ printf '10\n4\n' | python calculator.py   # all five operations
 printf '10\n0\n' | python calculator.py   # urgent fix: honest error
 printf '2\n10\n' | python calculator.py   # new feature: power
 ```
+
+---
+
+## 🔟 Automated Tests & CI
+
+### Why this section exists
+
+The exercise above deliberately parked work with `git stash` and merged a
+long-lived `hotfix/division-by-zero` branch into `main`. That second action
+caused a real outage: because the hotfix branch was created **before** the
+import-time refactor, merging it back **resurrected** a line that the refactor
+had deleted.
+
+```python
+from readdata import a, b   # resurrected by the stale merge
+```
+
+`main` stopped working entirely:
+
+```
+ImportError: cannot import name 'a' from 'readdata'
+```
+
+There was **no CI on this repository at the time**, so nothing caught it. This
+section is the fix for that gap.
+
+### Running the tests
+
+The test suite needs [pytest](https://docs.pytest.org/):
+
+```bash
+pip install -r requirements-dev.txt
+pytest -q
+```
+
+```
+38 passed in 0.15s
+```
+
+> 🧩 The refactor in [the exercise](#stash-exercise) is what made this possible.
+> While the operation modules called `input()` at import time, nothing could be
+> imported without a human at the keyboard, so nothing could be tested.
+
+### What the tests cover
+
+| File | Guards against |
+| :--- | :--- |
+| `tests/test_operations.py` | Wrong arithmetic; division by zero returning a fabricated result |
+| `tests/test_calculator.py` | End-to-end `main()` behaviour, including surviving a zero divisor |
+| `tests/test_import_safety.py` | **Both historical outages** — import-time `input()`, and stale `readdata` imports |
+
+`test_import_safety.py` is the important one. It imports every module in a
+**subprocess with no stdin attached**, so a module that blocks on `input()` or
+raises `ImportError` fails loudly instead of hanging:
+
+```python
+result = run_python("import division")   # stdin=subprocess.DEVNULL
+assert result.returncode == 0
+```
+
+It also parses the AST to assert that `read_data` is the *only* name anyone may
+import from `readdata` — a textual check, unlike a comment, cannot be fooled.
+
+### The CI workflow
+
+`.github/workflows/pr-check.yml` runs on every pull request and every push to
+`main`. It performs five layers of checking, cheapest first:
+
+1. **`compileall`** — byte-compiles everything, catching syntax errors.
+2. **Stale-import grep** — fails with a clear `::error::` if anyone imports `a`
+   or `b` from `readdata`. This is the exact check that would have caught the
+   outage.
+3. **Import every module with no stdin** — the same guarantee the test suite
+   makes, but before any test runs.
+4. **CLI smoke test** — pipes real input through `calculator.py` for the normal,
+   zero-divisor, and power cases.
+5. **`pytest`** — the full suite, with a JUnit report uploaded as an artifact.
+
+### Branch protection
+
+Because the check exists, `main` is protected: pushes straight to `main` are
+blocked, and the `PR Check / Tests` status must pass before a PR can merge.
+
+```bash
+# see the protection in place
+gh api repos/bkvs88/git_repo_from_scratch/branches/main/protection
+```
+
+This closes the loop — CI alone is advisory, but a **required** check that
+cannot be bypassed is what actually prevents a broken `main`.
+
+---
 
 ---
 
