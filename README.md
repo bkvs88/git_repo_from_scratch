@@ -814,6 +814,17 @@ git log --oneline --graph
 * Add readdata module to capture user input
 ```
 
+> ℹ️ **A note on what happened next to this history.** A later
+> `git pull --rebase origin main` — run to pick up upstream README changes —
+> found that `main` had diverged and **replayed the local commits on top**,
+> which discarded the merge commit and produced a linear history instead. The
+> hotfix commit is still there and still reachable from `main`; only the
+> merge marker is gone, and its SHA changed as a result.
+>
+> This is standard `rebase` behaviour, not data loss, but it is worth knowing:
+> **a rebase rewrites commit SHAs.** If you had already shared the old SHAs in
+> a PR, a message, or a wiki, they would now be stale.
+
 Final verification — the feature **and** the fix are both live on `main`:
 
 ```bash
@@ -869,8 +880,8 @@ so each one can be verified individually.
 
 | #   | SHA     | Commit message                                                                | Files changed                          |
 | --- | ------- | ----------------------------------------------------------------------------- | -------------------------------------- |
-| 1   | `41bc074` | `Merge hotfix/division-by-zero: correct division by zero handling` (merge)    | `division.py`                          |
-| 2   | `621ac5b` | `Fix division by zero to report error instead of returning false result`      | `division.py`                          |
+| 1   | `b857640` | `Document the git stash exercise: list, show, apply, pop, drop`               | `README.md`                            |
+| 2   | `671ddc6` | `Fix division by zero to report error instead of returning false result`      | `division.py`                          |
 | 3   | `3aaf5ac` | `Add power operation and wire it into the calculator`                         | `power.py`, `calculator.py`            |
 | 4   | `1e9337e` | `Sync README commit log with actual git history`                              | `README.md`                            |
 | 5   | `a1cc5d9` | `Update commit messages and README content`                                    | `README.md`                            |
@@ -885,7 +896,7 @@ so each one can be verified individually.
 Commits 12–6 build up the calculator itself; 5–3 are documentation updates;
 **3** is the stashed feature (see [Step 1](#step-1--start-the-feature-but-do-not-commit-it)),
 **2** is the urgent hotfix (see [Step 3](#step-3--switch-branches-and-ship-the-urgent-fix)),
-and **1** merges the hotfix back into `main`.
+and **1** documents the whole stash exercise.
 
 Verify them yourself:
 
@@ -894,13 +905,11 @@ git log --oneline --graph
 ```
 
 ```
-*   41bc074 Merge hotfix/division-by-zero: correct division by zero handling
-|\
-| * 621ac5b Fix division by zero to report error instead of returning false result
-* | 3aaf5ac Add power operation and wire it into the calculator
-* | 1e9337e Sync README commit log with actual git history
-* | a1cc5d9 Update commit messages and README content
-|/
+* b857640 Document the git stash exercise: list, show, apply, pop, drop
+* 671ddc6 Fix division by zero to report error instead of returning false result
+* 3aaf5ac Add power operation and wire it into the calculator
+* 1e9337e Sync README commit log with actual git history
+* a1cc5d9 Update commit messages and README content
 * 8dc6f4f Wrap calculator execution in a main function guard
 * dc6882c Add .gitignore to exclude bytecode, caches, and local files
 * 50ed391 Add README documenting the calculator project
@@ -915,9 +924,14 @@ git log --oneline --graph
 > table to open its diff, or run `git log --stat` locally to see the per-file
 > change counts.
 >
-> This README's own documentation commit sits on top of `41bc074` and therefore
-> cannot list its own SHA (amending to add it would change it again). Run
-> `git log --oneline -1` to see the current tip.
+> Note that commits **2** and **3** are the ends of the two branches built in
+> this exercise. The hotfix was originally merged into `main` with
+> `git merge --no-ff` to produce a visible merge commit, but a later
+> `git pull --rebase` (see [Step 9](#9️⃣-bringing-it-together--merge-the-hotfix))
+> replayed the local commits and flattened that merge, which is why the history
+> is now linear and why the hotfix SHA is `671ddc6` rather than the original
+> `621ac5b`. This is normal and harmless — but it is exactly why you should
+> read SHAs from `git log` rather than transcribing them from an old document.
 
 ---
 
