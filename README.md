@@ -254,11 +254,13 @@ the bottom-left of the Source Control panel.
 
 | #   | Commit message                                            | Files added                          |
 | --- | --------------------------------------------------------- | ------------------------------------ |
-| 1   | `Initial commit: project README and .gitignore`           | `README.md`, `.gitignore`            |
-| 2   | `Add readdata module to accept two numbers`               | `readdata.py`                        |
-| 3   | `Add addition and subtraction modules`                    | `addition.py`, `substraction.py`     |
-| 4   | `Add multiplication and division modules`                 | `multiplication.py`, `division.py`   |
-| 5   | `Add calculator entry point that runs all operations`     | `calculator.py`                      |
+| 1   | `Add readdata module to capture user input`           | `readdata.py`             |
+| 2   | `Add addition and substraction operations`                | `addition.py`, `substraction.py`      |
+| 3   | `Add multiplication and division operations`               | `multiplication.py`, `division.py`     |
+| 4   | `Add calculator main entry point that runs all operations`                | `calculator.py`     |
+| 5   | `Add README documenting the calculator project`   | `README.md`                   |
+| 6|`Add .gitignore to exclude bytecode, caches, and local files`|`.gitignore` 
+
 
 Verify them yourself:
 
