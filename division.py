@@ -1,3 +1,6 @@
+from readdata import a, b
+
+
 def div(a, b):
     if b == 0:
         print(f"Error: cannot divide {a} by zero. Division skipped.")
