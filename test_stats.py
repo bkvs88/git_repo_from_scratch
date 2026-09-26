@@ -9,7 +9,7 @@ def test_median():
     assert median(2, 4) == 3
 
 
-def test_median_delegates_to_mean_for_two_inputs():
+def test_median_equals_mean_for_two_inputs():
     assert median(-5, 3) == mean(-5, 3)
 
 
@@ -40,3 +40,17 @@ def test_equal_values():
         assert median(a, b) == a
         assert minimum(a, b) == a
         assert maximum(a, b) == a
+
+
+def test_each_operation_prints_its_own_label(capsys):
+    mean(2, 4)
+    assert capsys.readouterr().out == "Mean of 2 and 4 is : 3.0\n"
+
+    median(2, 4)
+    assert capsys.readouterr().out == "Median of 2 and 4 is : 3.0\n"
+
+    minimum(2, 4)
+    assert capsys.readouterr().out == "Minimum of 2 and 4 is : 2\n"
+
+    maximum(2, 4)
+    assert capsys.readouterr().out == "Maximum of 2 and 4 is : 4\n"
