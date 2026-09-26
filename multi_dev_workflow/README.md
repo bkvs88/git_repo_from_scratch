@@ -5,7 +5,28 @@ pull → push → branch → Pull Request → code review → merge**.
 
 Every command in this document was actually executed against
 **<https://github.com/bkvs88/git_repo_from_scratch>** while producing this guide.
-The real transcript of that run lives in [`TRANSCRIPT.md`](TRANSCRIPT.md).
+
+| Companion document | What it holds |
+| :--- | :--- |
+| [`TRANSCRIPT.md`](TRANSCRIPT.md) | The full command-by-command run, with real output |
+| [`CODE_REVIEW.md`](CODE_REVIEW.md) | The two-round review of PR #8, comment by comment |
+
+**The run that produced this guide:**
+
+* **PR #8** — <https://github.com/bkvs88/git_repo_from_scratch/pull/8>
+  *"Add statistics operations (mean, median, min, max)"*
+* **Merged** as `9956659` — A reviewed, requested changes, B pushed `e0ea73f`,
+  A approved and merged. `main` on both machines now points at `9956659`.
+
+```bash
+$ git log --oneline --graph --decorate -4
+*   9956659 (HEAD -> main, origin/main) Merge pull request #8 from bkvs88/feature/statistics
+|\
+| * e0ea73f Address review comments on #8
+| * 0ebe9f6 Add statistics operations (mean, median, min, max)
+|/
+* 2143e90 docs: add multi-developer Git and GitHub workflow guide
+```
 
 ---
 
