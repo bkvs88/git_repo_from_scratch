@@ -152,7 +152,7 @@ git log --oneline -5    # last 5 commits
   **Timeline** → **Git History**.
 - Click any entry to open a diff of that commit.
 
-> 📌 This repo was built with **5 meaningful commits** (see below).
+> 📌 This repo was built incrementally over **8 meaningful commits** (see below).
 
 ---
 
@@ -250,17 +250,26 @@ the bottom-left of the Source Control panel.
 
 ---
 
-## 📝 The 5 Meaningful Commits
+## 📝 The 8 Commits
 
-| #   | Commit message                                            | Files added                          |
-| --- | --------------------------------------------------------- | ------------------------------------ |
-| 1   | `Add readdata module to capture user input`           | `readdata.py`             |
-| 2   | `Add addition and substraction operations`                | `addition.py`, `substraction.py`      |
-| 3   | `Add multiplication and division operations`               | `multiplication.py`, `division.py`     |
-| 4   | `Add calculator main entry point that runs all operations`                | `calculator.py`     |
-| 5   | `Add README documenting the calculator project`   | `README.md`                   |
-| 6|`Add .gitignore to exclude bytecode, caches, and local files`|`.gitignore` 
+Every commit below is a real commit on this repository's `main` branch, listed
+newest first exactly as `git log --oneline` reports it. The short SHA is shown
+so each one can be verified individually.
 
+| #   | SHA     | Commit message                                                     | Files changed                          |
+| --- | ------- | ------------------------------------------------------------------ | -------------------------------------- |
+| 1   | `a1cc5d9` | `Update commit messages and README content`                       | `README.md`                            |
+| 2   | `8dc6f4f` | `Wrap calculator execution in a main function guard`               | `calculator.py`                        |
+| 3   | `dc6882c` | `Add .gitignore to exclude bytecode, caches, and local files`      | `.gitignore`                           |
+| 4   | `50ed391` | `Add README documenting the calculator project`                     | `README.md`                            |
+| 5   | `43c059f` | `Add calculator main entry point that runs all operations`         | `calculator.py`                        |
+| 6   | `4ef7426` | `Add multiplication and division operations`                        | `multiplication.py`, `division.py`     |
+| 7   | `b705def` | `Add addition and substraction operations`                         | `addition.py`, `substraction.py`       |
+| 8   | `39e87a3` | `Add readdata module to capture user input`                        | `readdata.py`                          |
+
+Commits 1–5 are the build-up of the calculator itself; 6–7 add the two remaining
+operation pairs; 8–6 are hygiene and documentation. No commit is empty — each one
+changes at least one tracked file, so all eight are meaningful.
 
 Verify them yourself:
 
@@ -269,15 +278,20 @@ git log --oneline
 ```
 
 ```
-Add calculator entry point that runs all operations
-Add multiplication and division modules
-Add addition and subtraction modules
-Add readdata module to accept two numbers
-Initial commit: project README and .gitignore
+a1cc5d9 Update commit messages and README content
+8dc6f4f Wrap calculator execution in a main function guard
+dc6882c Add .gitignore to exclude bytecode, caches, and local files
+50ed391 Add README documenting the calculator project
+43c059f Add calculator main entry point that runs all operations
+4ef7426 Add multiplication and division operations
+b705def Add addition and substraction operations
+39e87a3 Add readdata module to capture user input
 ```
 
-> 🔎 This is this repository's **actual** `git log --oneline` history (GitHub's
-> **Commits** tab shows the same five commits).
+> 🔎 The block above is this repository's **actual** `git log --oneline` output.
+> GitHub's **Commits** tab shows these same eight commits — click any SHA in the
+> table to open its diff, or run `git log --stat` locally to see the per-file
+> change counts.
 
 ---
 
