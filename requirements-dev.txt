@@ -1,4 +1,0 @@
-# Development dependencies.
-# The calculator itself has no runtime dependencies; these are only needed to
-# run the test suite in CI and locally.
-pytest==8.4.2

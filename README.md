@@ -46,9 +46,6 @@ GitHub's default file browser.
 | `division.py`     | Defines `div(a, b)` — returns `a / b`; guards `b == 0`. |
 | `power.py`        | Defines `power(a, b)` — returns `a ** b`.          |
 | `calculator.py`   | Entry point — calls all five operations.            |
-| `tests/`          | pytest suite — see [Automated Tests & CI](#-automated-tests--ci). |
-| `requirements-dev.txt` | Test-only dependencies (the app itself has none). |
-| `.github/workflows/pr-check.yml` | CI: runs the checks on every PR and push to `main`. |
 | `.gitignore`      | Tells Git which files to **never track**.           |
 
 Run it with:
@@ -853,15 +850,14 @@ printf '2\n10\n' | python calculator.py   # new feature: power
 
 ---
 
-## 🔟 Automated Tests & CI
+## 🔟 Verifying Changes Manually
 
-### Why this section exists
+### The outage that motivated this
 
-The exercise above deliberately parked work with `git stash` and merged a
-long-lived `hotfix/division-by-zero` branch into `main`. That second action
-caused a real outage: because the hotfix branch was created **before** the
-import-time refactor, merging it back **resurrected** a line that the refactor
-had deleted.
+The exercise above parked work with `git stash` and merged a long-lived
+`hotfix/division-by-zero` branch into `main`. That second action caused a real
+outage: because the hotfix branch was created **before** the import-time
+refactor, merging it back **resurrected** a line the refactor had deleted.
 
 ```python
 from readdata import a, b   # resurrected by the stale merge
@@ -873,75 +869,72 @@ from readdata import a, b   # resurrected by the stale merge
 ImportError: cannot import name 'a' from 'readdata'
 ```
 
-There was **no CI on this repository at the time**, so nothing caught it. This
-section is the fix for that gap.
+> ⚠️ **This repository has no automated tests or CI.** The test suite and
+> GitHub Actions workflow that briefly guarded against this have since been
+> removed, so **nothing** now prevents a similar regression from reaching
+> `main`. Run the checks below by hand after any change.
 
-### Running the tests
+### The checks to run by hand
 
-The test suite needs [pytest](https://docs.pytest.org/):
+Run all four before pushing:
 
 ```bash
-pip install -r requirements-dev.txt
-pytest -q
+# 1. Every module must import with no stdin attached.
+#    Catches the import-time input() and stale-import class of bug.
+for m in addition substraction multiplication division power readdata calculator; do
+  python -c "import $m" < /dev/null || echo "FAILED: $m"
+done
+
+# 2. No stale readdata imports (only read_data may be imported).
+if grep -rnE 'from readdata import .*(^|[ ,(])(a|b)([ ,)]|$)' --include='*.py' .; then
+  echo "FAILED: someone imports a or b from readdata"
+fi
+
+# 3. The CLI must work end to end.
+printf '10\n4\n'  | python calculator.py   # normal
+printf '10\n0\n'  | python calculator.py   # zero divisor
+printf '2\n10\n'  | python calculator.py   # power
+
+# 4. Everything must byte-compile.
+python -m compileall -q .
 ```
 
+Expected output for check 3:
+
 ```
-38 passed in 0.15s
-```
-
-> 🧩 The refactor in [the exercise](#stash-exercise) is what made this possible.
-> While the operation modules called `input()` at import time, nothing could be
-> imported without a human at the keyboard, so nothing could be tested.
-
-### What the tests cover
-
-| File | Guards against |
-| :--- | :--- |
-| `tests/test_operations.py` | Wrong arithmetic; division by zero returning a fabricated result |
-| `tests/test_calculator.py` | End-to-end `main()` behaviour, including surviving a zero divisor |
-| `tests/test_import_safety.py` | **Both historical outages** — import-time `input()`, and stale `readdata` imports |
-
-`test_import_safety.py` is the important one. It imports every module in a
-**subprocess with no stdin attached**, so a module that blocks on `input()` or
-raises `ImportError` fails loudly instead of hanging:
-
-```python
-result = run_python("import division")   # stdin=subprocess.DEVNULL
-assert result.returncode == 0
+Addition of 10 and 4 is : 14
+substraction of 10 and 4 is : 6
+Division of 10 and 4 is : 2.5
+multiplication of 10 and 4 is : 40
+Power of 10 raised to 4 is : 10000
+Error: cannot divide 10 by zero. Division skipped.
+Power of 2 raised to 10 is : 1024
 ```
 
-It also parses the AST to assert that `read_data` is the *only* name anyone may
-import from `readdata` — a textual check, unlike a comment, cannot be fooled.
+### Why the import-time bug was possible at all
 
-### The CI workflow
+The original `readdata.py` called `input()` at **module scope**, and every
+operation module imported it at import time. That made each operation depend on
+a human at the keyboard, so the functions could not be reused or unit tested.
 
-`.github/workflows/pr-check.yml` runs on every pull request and every push to
-`main`. It performs five layers of checking, cheapest first:
-
-1. **`compileall`** — byte-compiles everything, catching syntax errors.
-2. **Stale-import grep** — fails with a clear `::error::` if anyone imports `a`
-   or `b` from `readdata`. This is the exact check that would have caught the
-   outage.
-3. **Import every module with no stdin** — the same guarantee the test suite
-   makes, but before any test runs.
-4. **CLI smoke test** — pipes real input through `calculator.py` for the normal,
-   zero-divisor, and power cases.
-5. **`pytest`** — the full suite, with a JUnit report uploaded as an artifact.
+The refactor fixed it: `read_data()` contains the prompts, `main()` calls it,
+and the operation modules import nothing. Check 1 above is what keeps it that
+way.
 
 ### Branch protection
 
-Because the check exists, `main` is protected: pushes straight to `main` are
-blocked, and the `PR Check / Tests` status must pass before a PR can merge.
+`main` is still protected against direct pushes, so changes reach it through a
+pull request:
 
 ```bash
-# see the protection in place
 gh api repos/bkvs88/git_repo_from_scratch/branches/main/protection
 ```
 
-This closes the loop — CI alone is advisory, but a **required** check that
-cannot be bypassed is what actually prevents a broken `main`.
-
----
+> 🔎 Earlier this repository required a `Tests` status check before merging.
+> That check was produced by the now-deleted workflow, so the requirement was
+> removed at the same time — otherwise every pull request would have been
+> blocked forever waiting for a check that could never run. PR-only protection
+> remains; the automated gate does not.
 
 ---
 
