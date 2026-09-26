@@ -1,0 +1,68 @@
+# CodeRabbit configuration — https://docs.coderabbit.ai
+#
+# This file must live on the repository's default branch to affect reviews.
+# Get the resolved config (including where each setting came from) by commenting
+# `@coderabbitai configuration` on any pull request.
+
+language: en-US
+
+reviews:
+  # "chill" keeps the review focused on real problems instead of style nits.
+  profile: chill
+
+  high_level_summary: true
+  review_status: true
+  review_details: false
+  poem: false
+
+  # Lets CodeRabbit open a formal "changes requested" review when its blocking
+  # comments are unresolved, so the verdict shows up in the PR's review state
+  # instead of only in the comment thread.
+  request_changes_workflow: true
+
+  auto_review:
+    enabled: true
+    drafts: false
+    # Re-review only the commits added since the last review, instead of the
+    # whole PR, on every push.
+    auto_incremental_review: true
+    auto_pause_after_reviewed_commits: 10
+    description_keyword: ""
+    ignore_title_keywords:
+      - "WIP"
+      - "[skip review]"
+    labels:
+      - "!do-not-review"
+
+  path_instructions:
+    - path: "*.py"
+      instructions: |
+        This is a small teaching calculator. Each operation lives in its own
+        module and follows one convention: print a human-readable line, then
+        return the computed value.
+
+        - Flag anything that breaks that print-and-return contract.
+        - Flag a division/modulus by a possibly-zero divisor that is not guarded.
+        - Prefer extracting a shared private helper (e.g. `_mean`) over
+          duplicating a formula across public functions.
+        - `substraction.py` is misspelled but is imported by that name; do not
+          suggest renaming it as part of an unrelated change.
+
+    - path: "test_*.py"
+      instructions: |
+        - A test file should exercise the module its name refers to. Flag a test
+          that imports and asserts on a different module than its filename.
+        - Assert on observable behaviour, not on internal structure.
+        - Cover the sign and zero cases for any arithmetic helper.
+
+    - path: "*.md"
+      instructions: |
+        - These are teaching documents. Check that every command shown is real
+          and that its output matches what the tool actually prints.
+        - Flag any placeholder or TODO left in a published document.
+
+    - path: ".github/workflows/*.yml"
+      instructions: |
+        - Check that every referenced action is pinned, that `permissions:` is
+          least-privilege, and that any secret used is documented as a
+          prerequisite in the PR body rather than committed.
