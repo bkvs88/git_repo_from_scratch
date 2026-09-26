@@ -1,0 +1,64 @@
+# Claude Code as a PR reviewer.
+#
+# Setup (one-time, done by the repo owner):
+#   gh secret set ANTHROPIC_API_KEY --repo bkvs88/git_repo_from_scratch
+#
+# After that secret exists, two ways to get a review:
+#   1. Automatic - every new push to a PR branch triggers a review.
+#   2. On demand - comment "@claude review" on the PR.
+#
+# Docs: https://docs.claude.com/en/docs/claude-code/github-action
+
+name: Claude Code Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+jobs:
+  review:
+    # Only run for pull_request events whose author asked for it, and for
+    # issue_comment events that mention @claude. This keeps the Action from
+    # spending tokens on every PR in the repository.
+    if: >-
+      (github.event_name == 'pull_request'
+        && contains(github.event.pull_request.body, 'claude-review'))
+      || (github.event_name == 'issue_comment'
+        && contains(github.event.comment.body, '@claude'))
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run Claude Code review
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          github_tools: review-pr
+          prompt: |
+            Review this pull request.
+
+            Focus on, in priority order:
+            1. Correctness - will this break existing behaviour, or introduce
+               a bug the tests do not cover?
+            2. Tests - is the new behaviour actually pinned by a test?
+            3. Clarity - are names, docstrings and comments accurate?
+            4. Consistency - does the change match the conventions already
+               used in the surrounding modules?
+
+            Rules:
+            - Read the diff with `git diff` before commenting.
+            - Leave inline review comments only on lines the PR actually
+              touches, and only where you have something specific to say.
+            - Do not comment on formatting that a formatter would handle.
+            - Finish with a clear verdict: APPROVE, or REQUEST CHANGES with a
+              numbered list of blocking items.
