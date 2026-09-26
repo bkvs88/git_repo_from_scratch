@@ -919,17 +919,22 @@ git log --oneline --graph
 * 39e87a3 Add readdata module to capture user input
 ```
 
-> 🔎 The block above is this repository's **actual** `git log --oneline --graph`
-> output. GitHub's **Commits** tab shows the same history — click any SHA in the
+> 🔎 Commits 1–12 above are this repository's **actual** `git log --oneline`
+> history. GitHub's **Commits** tab shows the same log — click any SHA in the
 > table to open its diff, or run `git log --stat` locally to see the per-file
 > change counts.
+>
+> The table deliberately stops short of the tip: a commit **cannot record its
+> own SHA**, since amending it to add the SHA would change the SHA again. The
+> newest commit — the one that maintains this table — is therefore always
+> missing from it. Run `git log --oneline -1` for the current tip.
 >
 > Note that commits **2** and **3** are the ends of the two branches built in
 > this exercise. The hotfix was originally merged into `main` with
 > `git merge --no-ff` to produce a visible merge commit, but a later
 > `git pull --rebase` (see [Step 9](#9️⃣-bringing-it-together--merge-the-hotfix))
 > replayed the local commits and flattened that merge, which is why the history
-> is now linear and why the hotfix SHA is `671ddc6` rather than the original
+> is linear and why the hotfix SHA is `671ddc6` rather than the original
 > `621ac5b`. This is normal and harmless — but it is exactly why you should
 > read SHAs from `git log` rather than transcribing them from an old document.
 
