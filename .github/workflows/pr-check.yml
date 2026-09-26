@@ -1,0 +1,75 @@
+name: PR Check
+
+# Runs on every pull request and on every push to main.
+# This is the check that was missing when a broken import reached main.
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+
+      - name: Byte-compile every module
+        # Catches syntax errors, and fails loudly if a module cannot even be
+        # parsed. Cheap, and it is the first thing that broke in practice.
+        run: python -m compileall -q .
+
+      - name: Check for stale readdata imports
+        # A merged long-lived branch once resurrected `from readdata import a, b`
+        # and broke main with an ImportError. Fail fast with a clear message.
+        run: |
+          if grep -rnE 'from readdata import .*(^|[ ,(])(a|b)([ ,)]|$)' --include='*.py' .; then
+            echo "::error::stale import from readdata; only read_data may be imported"
+            exit 1
+          fi
+
+      - name: Verify every module imports with no stdin
+        # Importing a module must never block on input().
+        run: |
+          for m in addition substraction multiplication division power readdata calculator; do
+            printf '::group::import %s\n' "$m"
+            python -c "import $m" < /dev/null
+            printf '::endgroup::\n'
+          done
+
+      - name: Smoke-test the CLI end to end
+        run: |
+          printf '10\n4\n' | python calculator.py
+          printf '10\n0\n' | python calculator.py
+          printf '2\n10\n' | python calculator.py
+
+      - name: Run the test suite
+        run: pytest -q --maxfail=1 --junitxml=junit-report.xml
+
+      - name: Upload the JUnit report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pytest-report
+          path: |
+            junit-report.xml
+            .pytest_cache/
+          retention-days: 7
+          if-no-files-found: ignore
