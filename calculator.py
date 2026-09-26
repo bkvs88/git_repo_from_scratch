@@ -4,6 +4,7 @@ from substraction import sub
 from division import div
 from multiplication import multiply
 from power import power
+from stats import mean, median, minimum, maximum
 
 
 def main():
@@ -14,6 +15,10 @@ def main():
     div(a, b)
     multiply(a, b)
     power(a, b)
+    mean(a, b)
+    median(a, b)
+    minimum(a, b)
+    maximum(a, b)
 
 
 if __name__ == "__main__":
